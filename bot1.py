@@ -327,7 +327,7 @@ async def status(ctx):
         color=discord.Color.green()
     )
     embed.add_field(
-        name="[",{h}," Health]",
+        name=f"{h} Health",
         value=f"{stats['health']}/100"
     )
     embed.add_field(name=f"{f} Hunger", value=f"{stats['hunger']}/100")
@@ -434,12 +434,12 @@ async def level(ctx, target: discord.Member = None):
     )
     embed.add_field(
         name="⭐ Level",
-        value="**",{current_level},"**",
+        value=f"**{current_level}**",
         inline=True
     )
     embed.add_field(
         name="✨ Progress XP",
-        value="`",{current_xp}," / ",{xp_needed}," XP`",
+        value=f"`{current_xp} / {xp_needed} XP`",
         inline=True
     )
     await ctx.send(embed=embed)
@@ -506,25 +506,17 @@ async def help(ctx):
     )
     embed.add_field(
         name="💬 Social & Leveling",
-        value="Send **Hi** or **Bye**"
-              "`",{BOT_PREFIX},"level`: View XP profile."
-              "`",{BOT_PREFIX},"sls`: Server Level Statusboard."
-              "`",{BOT_PREFIX},"gls`: Global Level Statusboard.",
+        value=f"• Say **Hi** or **Bye**\n• `{BOT_PREFIX}level`: View XP profile.\n• `{BOT_PREFIX}sls`: Server Level Statusboard.\n• `{BOT_PREFIX}gls`: Global Level Statusboard.",
         inline=False
     )
     embed.add_field(
         name="🍖 Pet System",
-        value="`",{BOT_PREFIX},"status`: Check health/hunger."
-              "`",{BOT_PREFIX},"feed <food>`: Give me a snack!"
-              "`",{BOT_PREFIX},"revive`: Break out of ghost mode 👻",
+        value=f"• `{BOT_PREFIX}status`: Check health/hunger.\n• `{BOT_PREFIX}feed <food>`: Give me a snack!\n• `{BOT_PREFIX}revive`: Break out of ghost mode 👻",
         inline=False
     )
     embed.add_field(
         name="🛠️ Utility",
-        value="`",{BOT_PREFIX},"ping`: Latency."
-              "`",{BOT_PREFIX},"uptime`: Online length."
-              "`",{BOT_PREFIX},"battery`: Host device status."
-              "`",{BOT_PREFIX},"purge` / `",{BOT_PREFIX},"restart` / `",{BOT_PREFIX},"stop`: Admin commands.",
+        value=f"• `{BOT_PREFIX}ping`: Latency.\n• `{BOT_PREFIX}uptime`: Online length.\n• `{BOT_PREFIX}battery`: Host device status.\n• `{BOT_PREFIX}purge / {BOT_PREFIX}restart / {BOT_PREFIX}stop`: Admin commands.",
         inline=False
     )
     embed.set_footer(text="Requested by " + ctx.author.name)
