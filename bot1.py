@@ -1,3 +1,10 @@
+# Cabbagetic Discord BOT1 and it is a Discord bot usually for the Cabbagetic Discord servers alongside with any other Discord servers of any Discord users with various purposes to provide enjoyment, fun, responsibilities and engagement for the users.
+# Copyright (C) 2026  Esterajisi, Cabbagex55g and Cabbagetic (AKA Cabbagetic 2.0)
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 import aiosqlite
 import asyncio
 import discord
@@ -164,6 +171,13 @@ async def on_ready():
     if not hunger_decay.is_running():
         hunger_decay.start()
 
+    print("--------------------------------------------------")
+    print("Cabbagetic Discord BOT1")
+    print("Copyright (C) 2026 Esterajisi, Cabbagex55g and Cabbagetic (AKA Cabbagetic 2.0)")
+    print("This program comes with ABSOLUTELY NO WARRANTY.")
+    print("This is free software under the GNU GPLv3; you are")
+    print("welcome to redistribute it under certain conditions.")
+    print("--------------------------------------------------")
     print(f'✅ Logged in as {bot.user.name}. Everything is loaded and ready for action!')
 
     async with aiosqlite.connect("bot_stats.db") as db:
@@ -308,21 +322,53 @@ async def status(ctx):
     h = "❤️" if stats["health"] > 50 else "💔"
     f = "🍖" if stats["hunger"] > 50 else "🦴"
 
-    embed = discord.Embed(title="Bot Status", color=discord.Color.green())
-    embed.add_field(name=f"{h} Health", value=f"{stats['health']}/100")
+    embed = discord.Embed(
+        title="Bot Status",
+        color=discord.Color.green()
+    )
+    embed.add_field(
+        name="[",{h}," Health]",
+        value=f"{stats['health']}/100"
+    )
     embed.add_field(name=f"{f} Hunger", value=f"{stats['hunger']}/100")
     await ctx.send(embed=embed)
 
 @bot.command(name="feed", aliases=["Feed"])
 async def feed(ctx, item: str):
     stats = await get_bot_status()
-    new_hunger = min(100, stats["hunger"] + 20)
-    new_health = stats["health"]
-    if stats["hunger"] > 80:
-        new_health = min(100, stats["health"] + 5)
+    current_hunger = stats["hunger"]
+    current_health = stats["health"]
+    
+    #Radioactivity and dangerous items
+    radioactive_items = ["uranium", "glowing-sludge", "toxic-waste", "weird-rock", "plutonium", "thorium", "radium", "radon", "tritium"]
+    is_radioactive = item.lower() in radioactive_items
+    
+    if is_radioactive:
+        # Radiation & Abnormal Behavior trigger
+        new_health = max(0, current_health - 30)
+        await update_bot_status(hunger_level=current_hunger, health=new_health, status="irradiated", is_ghost=0)
+        await ctx.send(f"☢️ Yikes! You fed the bot a **{item}**! It got severe **radiations**, developed **anxiety**, and is now acting with **abnormal behavior**!")
+        return
 
-    await update_bot_status(hunger_level=new_hunger, health=new_health, is_ghost=0)
+    #Overfeeding
+    if current_hunger >= 100:
+        # Overfeeding -> Vomiting, Acidity, & Fatigue
+        new_health = max(0, current_health - 15)
+        # Drop fullness down to 50 because it threw up everything
+        await update_bot_status(hunger_level=50, health=new_health, status="acidic_and_fatigued", is_ghost=0)
+        await ctx.send(f"🤢 Blech! The bot was already completely full! It choked down the {item}, immediately **vomited everywhere**, and now has severe **acidity** and **fatigue**!")
+        return
+
+    #Normal
+    new_hunger = min(100, current_hunger + 20)
+    if current_hunger > 80:
+        new_health = min(100, current_health + 5)
+    else:
+        new_health = current_health
+
+    await update_bot_status(hunger_level=new_hunger, health=new_health, status="normal", is_ghost=0)
     await ctx.send(f"You fed the bot a {item}! It feels much better :D")
+    
 
 @bot.command(name="restart", aliases=["Restart"])
 async def restart(ctx):
@@ -379,10 +425,23 @@ async def level(ctx, target: discord.Member = None):
     current_xp, current_level = res[0], res[1]
     xp_needed = current_level * 100
 
-    embed = discord.Embed(title=f"📊 XP Profile - {user.display_name}", color=discord.Color.blue())
-    embed.set_thumbnail(url=user.display_avatar.url)
-    embed.add_field(name="⭐ Level", value=f"**{current_level}**", inline=True)
-    embed.add_field(name="✨ Progress XP", value=f"`{current_xp} / {xp_needed} XP`", inline=True)
+    embed = discord.Embed(
+        title=f"📊 XP Profile - {user.display_name}",
+        color=discord.Color.blue()
+    )
+    embed.set_thumbnail(
+        url=user.display_avatar.url
+    )
+    embed.add_field(
+        name="⭐ Level",
+        value="**",{current_level},"**",
+        inline=True
+    )
+    embed.add_field(
+        name="✨ Progress XP",
+        value="`",{current_xp}," / ",{xp_needed}," XP`",
+        inline=True
+    )
     await ctx.send(embed=embed)
 
 
@@ -440,11 +499,61 @@ async def global_statusboard(ctx):
 
 @bot.command(name="help", aliases=["Help"])
 async def help(ctx):
-    embed = discord.Embed(title="🤖 Bot Command Menu", description="Here is everything I can do!", color=discord.Color.green())
-    embed.add_field(name="💬 Social & Leveling", value=f"• Say **Hi** or **Bye**\n• `{BOT_PREFIX}level`: View XP profile.\n• `{BOT_PREFIX}sls`: Server Level Statusboard.\n• `{BOT_PREFIX}gls`: Global Level Statusboard.", inline=False)
-    embed.add_field(name="🍖 Pet System", value=f"• `{BOT_PREFIX}status`: Check health/hunger.\n• `{BOT_PREFIX}feed <food>`: Give me a snack!\n• `{BOT_PREFIX}revive`: Break out of ghost mode 👻", inline=False)
-    embed.add_field(name="🛠️ Utility", value=f"• `{BOT_PREFIX}ping`: Latency.\n• `{BOT_PREFIX}uptime`: Online length.\n• `{BOT_PREFIX}battery`: Host device status.\n• `{BOT_PREFIX}purge / {BOT_PREFIX}restart / {BOT_PREFIX}stop`: Admin commands.", inline=False)
+    embed = discord.Embed(
+        title="🤖 Bot Command Menu",
+        description="Here is everything I can do!",
+        color=discord.Color.green()
+    )
+    embed.add_field(
+        name="💬 Social & Leveling",
+        value="Send **Hi** or **Bye**"
+              "`",{BOT_PREFIX},"level`: View XP profile."
+              "`",{BOT_PREFIX},"sls`: Server Level Statusboard."
+              "`",{BOT_PREFIX},"gls`: Global Level Statusboard.",
+        inline=False
+    )
+    embed.add_field(
+        name="🍖 Pet System",
+        value="`",{BOT_PREFIX},"status`: Check health/hunger."
+              "`",{BOT_PREFIX},"feed <food>`: Give me a snack!"
+              "`",{BOT_PREFIX},"revive`: Break out of ghost mode 👻",
+        inline=False
+    )
+    embed.add_field(
+        name="🛠️ Utility",
+        value="`",{BOT_PREFIX},"ping`: Latency."
+              "`",{BOT_PREFIX},"uptime`: Online length."
+              "`",{BOT_PREFIX},"battery`: Host device status."
+              "`",{BOT_PREFIX},"purge` / `",{BOT_PREFIX},"restart` / `",{BOT_PREFIX},"stop`: Admin commands.",
+        inline=False
+    )
     embed.set_footer(text="Requested by " + ctx.author.name)
+    await ctx.send(embed=embed)
+
+@bot.command(name="about", aliases=["About","Info","info","AboutTheBot","Aboutthebot","aboutthebot","aboutTheBot","aboutTheBOT","BOTINFO","BotInfo","botinfo"])
+async def about(ctx):
+    embed = discord.Embed(
+        title="🤖 Cabbagetic Discord BOT1",
+        description="A dedicated Discord bot usually for the Cabbagetic Discord servers alongside with any other Discord servers of any Discord users with various purposes to provide enjoyment, fun, responsibilities and engagement for the users. Feel free to add this APP to your Discord server(s) from its discord profile.",
+        color=discord.Color.green()
+    )
+    embed.add_field(
+        name="👥 Authors & Copyright", 
+        value="Copyright (C) 2026 Esterajisi, Cabbagex55g and Cabbagetic (AKA Cabbagetic 2.0)", 
+        inline=False
+    )
+    embed.add_field(
+        name="📜 Open Source License", 
+        value="This program is free software protected under the **GNU GPLv3 License**. "
+              "It comes with absolutely no warranty. You are free to view, modify, "
+              "and redistribute its source code under the terms of the GPLv3.", 
+        inline=False
+    )
+    embed.add_field(
+        name="📖 Source Code",
+        value="[Available on GitHub ↗️](https://github.com/Cabbagetic/DiscordBOT1)",
+        inline=False
+    )
     await ctx.send(embed=embed)
 
 # 4. RUN
