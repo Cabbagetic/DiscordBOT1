@@ -136,3 +136,4 @@ Command         →        Description
 - [x] Implement mathematical XP progression tracking and persistent text rank mechanics.
 - [ ] Implement integrated inventory items and an analytical economy structure.
 - [x] Implement `Level`, `ServerLevelstats` (`sls`/`Sls`), `GlobalLevelstats` (`gls`/`Gls`)
+- [ ] Add issues while Overfeeding (such as vomiting, acidity, fatigue, radiations, slow behaviour, sleepy, inactive even though online, anxiety, abnormal behaviour)
