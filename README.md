@@ -137,3 +137,5 @@ Command         →        Description
 - [ ] Implement integrated inventory items and an analytical economy structure.
 - [x] Implement `Level`, `ServerLevelstats` (`sls`/`Sls`), `GlobalLevelstats` (`gls`/`Gls`)
 - [x] Add issues while Overfeeding (such as vomiting, acidity, fatigue, radiations, slow behaviour, sleepy, inactive even though online, anxiety, abnormal behaviour)
+- [ ] Add cures for overfeeding and the radioactivities
+- [ ] Add channel configurable command so the bot doesn't send its death scenes on discord's welcoming messages place of a discord server
