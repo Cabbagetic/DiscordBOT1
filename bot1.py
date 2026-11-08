@@ -142,6 +142,12 @@ async def init_db():
                 status TEXT DEFAULT 'normal'
             )
         """)
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS server_config (
+                guild_id INTEGER PRIMARY KEY,
+                death_channel_id INTEGER
+            )
+        ''')
         cursor = await db.execute("SELECT count(*) FROM bot_stats")
         count = await cursor.fetchone()
         if count[0] == 0:
@@ -160,6 +166,12 @@ async def on_ready():
                 xp INTEGER DEFAULT 0, 
                 level INTEGER DEFAULT 1,
                 status TEXT DEFAULT 'normal'
+            )
+        ''')
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS server_config (
+                guild_id INTEGER PRIMARY KEY,
+                death_channel_id INTEGER
             )
         ''')
         
@@ -185,6 +197,8 @@ async def on_ready():
 
     if not hunger_decay.is_running():
         hunger_decay.start()
+    if not health_regen.is_running():
+        health_regen.start()
 
     print("--------------------------------------------------")
     print("Cabbagetic Discord BOT1")
@@ -206,47 +220,79 @@ async def on_ready():
                 await update_bot_status(100, health=100, is_ghost=0)
 
 
-#--- Background Task: Decay Hunger/Health ---
+#--- Background Task: Decay Hunger/Health and Health Regeneration ---
 @tasks.loop(seconds=HUNGER_DECAY_INTERVAL)
 async def hunger_decay():
     async with aiosqlite.connect("bot_stats.db") as db:
-        async with db.execute("SELECT is_ghost FROM bot_stats WHERE id = 1") as cursor:
-            status = await cursor.fetchone()
-            if status and status[0] == 1:
+        async with db.execute("SELECT is_ghost, hunger, health FROM bot_stats WHERE id = 1") as cursor:
+            row = await cursor.fetchone()
+            if not row:
+                return
+            is_ghost, current_hunger, current_health = row[0], row[1], row[2]
+
+            if is_ghost == 1:
                 return
 
-        await db.execute("UPDATE bot_stats SET hunger = MAX(0, hunger - 10) WHERE id = 1")
-
-        async with db.execute("SELECT hunger, health FROM bot_stats WHERE id = 1") as cursor:
-            row = await cursor.fetchone()
-            new_hunger = row[0] if (row and row[0] is not None) else 100
-            current_health = row[1] if (row and row[1] is not None) else 100
+        new_hunger = max(0, current_hunger - 10)
+        new_health = current_health
 
         if new_hunger < 20:
-            current_health = max(0, current_health - 5)
-            await db.execute("UPDATE bot_stats SET health = ? WHERE id = 1", (current_health,))
+            new_health = max(0, new_health - 5)
 
+        await db.execute("UPDATE bot_stats SET hunger = ?, health = ? WHERE id = 1", (new_hunger, new_health))
         await db.commit()
 
-    await update_bot_status(new_hunger, health=current_health)
+    await update_bot_status(new_hunger, health=new_health)
     
-    if current_health <= 0 or new_hunger <= 0:
+    if new_health <= 0 or new_hunger <= 0:
         await check_for_death()
-
 
 async def check_for_death():
     stats = await get_bot_status()
     if stats["health"] <= 0 or stats["hunger"] <= 0:
         await update_bot_status(hunger_level=0, health=0, is_ghost=1)
-        
+
+        async with aiosqlite.connect("bot_stats.db") as db:
+            async with db.execute("SELECT guild_id, death_channel_id FROM server_config") as cursor:
+                configs = dict(await cursor.fetchall())
+
         for guild in bot.guilds:
             try:
                 await guild.me.edit(nick=f"Ghost 👻 of {bot.user.name}")
-                if guild.system_channel:
-                    await guild.system_channel.send(f"💔 **DIED...** The bot has succumbed to its conditions and turned into a ghost! Only `{BOT_PREFIX}revive` can bring it back.")
+                target_channel = None
+                if guild.id in configs and configs[guild.id]:
+                    target_channel = guild.get_channel(configs[guild.id])
+                if not target_channel:
+                    target_channel = guild.system_channel or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
+                if target_channel:
+                    embed = discord.Embed(
+                        title="💔 THE BOT HAS DIED...",
+                        description=f"The bot's health reached zero! Its body collapsed, and its soul has turned into a server ghost!\n\nUse `{BOT_PREFIX}revive` to perform a revival and bring it back to life!",
+                        color=discord.Color.dark_red()
+                    )
+                    await target_channel.send(embed=embed)
+
             except Exception as e:
                 print(f"Error handling death actions in guild {guild.id}: {e}")
 
+
+@tasks.loop(seconds=450)
+async def health_regen():
+    async with aiosqlite.connect("bot_stats.db") as db:
+        async with db.execute("SELECT is_ghost, hunger, health FROM bot_stats WHERE id = 1") as cursor:
+            row = await cursor.fetchone()
+            if not row:
+                return
+            is_ghost, current_hunger, current_health = row[0], row[1], row[2]
+            
+            if is_ghost == 1 or current_health >= 100:
+                return
+                
+        if current_hunger >= 75:
+            new_health = min(100, current_health + 6)
+            await db.execute("UPDATE bot_stats SET health = ? WHERE id = 1", (new_health,))
+            await db.commit()
+            await update_bot_status(current_hunger, health=new_health)
 
 #--- 💬 CENTRALIZED MESSAGE CONTROLLER 💬 ---
 
@@ -382,7 +428,7 @@ async def feed(ctx, item: str):
 
     #Overfeeding
     if current_hunger >= 100:
-        new_health = max(0, current_health - 15)
+        new_health = max(10, current_health - 5) if current_health > 20 else current_health
         await update_bot_status(hunger_level=50, health=new_health, status="acidic_and_fatigued", is_ghost=0)
         await ctx.send(f"🤢 Blech! The bot was already completely full! It choked down the {item}, immediately **vomited everywhere**, and now has severe **acidity** and **fatigue**!")
         return
@@ -523,6 +569,24 @@ async def global_statusboard(ctx):
 
     embed.description = description
     await ctx.send(embed=embed)
+
+@bot.command(name="setchannel", aliases=["Setchannel", "setdeathchannel"])
+async def set_channel(ctx, channel: discord.TextChannel = None):
+    """Sets the channel where death & ghost messages will be posted."""
+    if not (ctx.author.guild_permissions.administrator or ctx.author.id in TRUSTED_USERS):
+        return await ctx.send("❌ You need **Administrator** permissions to set the notification channel!")
+
+    target_channel = channel or ctx.channel
+
+    async with aiosqlite.connect("bot_stats.db") as db:
+        await db.execute("""
+            INSERT INTO server_config (guild_id, death_channel_id) 
+            VALUES (?, ?) 
+            ON CONFLICT(guild_id) DO UPDATE SET death_channel_id = excluded.death_channel_id
+        """, (ctx.guild.id, target_channel.id))
+        await db.commit()
+
+    await ctx.send(f"📢 **Death Scene Notifications** set to {target_channel.mention}!")
 
 
 @bot.command(name="help", aliases=["Help"])
