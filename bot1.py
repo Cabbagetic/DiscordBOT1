@@ -151,7 +151,7 @@ async def init_db():
         cursor = await db.execute("SELECT count(*) FROM bot_stats")
         count = await cursor.fetchone()
         if count[0] == 0:
-            await db.execute("INSERT INTO bot_stats (id, health, hunger, is_ghost) VALUES (1, 100, 100, 0)")
+            await db.execute("INSERT INTO bot_stats (id, health, hunger, is_ghost, status) VALUES (1, 100, 100, 0, 'normal')")
         await db.commit()
 
 @bot.event
@@ -588,7 +588,6 @@ async def set_channel(ctx, channel: discord.TextChannel = None):
 
     await ctx.send(f"📢 **Death Scene Notifications** set to {target_channel.mention}!")
 
-
 @bot.command(name="help", aliases=["Help"])
 async def help(ctx):
     embed = discord.Embed(
@@ -602,13 +601,13 @@ async def help(ctx):
         inline=False
     )
     embed.add_field(
-        name="🍖 Pet System",
-        value=f"• `{BOT_PREFIX}status`: Check health/hunger.\n• `{BOT_PREFIX}feed <food>`: Give me a snack!\n• `{BOT_PREFIX}revive`: Break out of ghost mode 👻",
+        name="🍖 Pet System & Survival",
+        value=f"• `{BOT_PREFIX}status`: Check health, hunger, and DNA conditions.\n• `{BOT_PREFIX}feed <food>`: Feed me (watch out for overfeeding and radioactive items!)\n• `{BOT_PREFIX}revive`: Break out of ghost mode 👻",
         inline=False
     )
     embed.add_field(
-        name="🛠️ Utility",
-        value=f"• `{BOT_PREFIX}ping`: Latency.\n• `{BOT_PREFIX}uptime`: Online length.\n• `{BOT_PREFIX}battery`: Host device status.\n• `{BOT_PREFIX}purge / {BOT_PREFIX}restart / {BOT_PREFIX}stop`: Admin commands.",
+        name="🛠️ Utility & Server Management",
+        value=f"• `{BOT_PREFIX}setchannel #channel`: Set custom death announcement channel.\n• `{BOT_PREFIX}ping`: Latency.\n• `{BOT_PREFIX}uptime`: Online length.\n• `{BOT_PREFIX}battery`: Host device status.\n• `{BOT_PREFIX}purge / {BOT_PREFIX}restart / {BOT_PREFIX}stop`: Admin commands.",
         inline=False
     )
     embed.set_footer(text="Requested by " + ctx.author.name)
